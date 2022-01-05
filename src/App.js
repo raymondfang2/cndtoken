@@ -1,87 +1,77 @@
-import logo from "./logo.svg";
+
 import "./App.css";
 import React from "react";
 
-import web3 from "./web3";
-import lottery from "./lottery";
+
+import cnd from "./cnd"
 
 class App extends React.Component {
-  //1. This is part of the constructor will be invoked when page lanuch index.js
+
   state = {
-    manager: '',
-    players:[],
-    balance: '',
-    value: '',
-    message: ''
+    totalSupply: '',
+    transferHistory: [],
   };
 
-  //3. This will be invoked after rendering
-  //state.manager changed
-  //4. state change will cause the re-render!
   async componentDidMount() {
-    const manager = await lottery.methods.manager().call();
-    const players = await lottery.methods.getPlayers().call();
-    const balance = await web3.eth.getBalance(lottery.options.address);
+    const totalSupply = await cnd.methods.totalSupply().call();
+    console.log("=========>");
+    console.log(totalSupply);
 
-    this.setState({ manager, players, balance });
+    let options = {
+      filter: {
+
+      },
+      fromBlock: 9817281,                  //Number || "earliest" || "pending" || "latest"
+      toBlock: 'latest'
+    };
+
+    let transferHistory = await cnd.getPastEvents('Transfer', options);
+    console.log(transferHistory);
+
+    this.setState({totalSupply, transferHistory});
+
+
+    console.log(this.state.transferHistory[1].returnValues.from);
+    console.log(this.state.transferHistory[1].returnValues.to);
+    console.log(this.state.transferHistory[1].returnValues.value);
+
   }
 
-  onSubmit = async (event) => {
-    event.preventDefault(); //Not classical html way
-
-    const accounts = await web3.eth.getAccounts();
-
-    this.setState({message: 'Waiting on transaction success...'})
-
-    await lottery.methods.enter().send({
-      from: accounts[0],
-      value: web3.utils.toWei(this.state.value, 'ether')
-    })
-
-    this.setState({message: 'You have been entered!'})
-
-  }
-
-  onClick = async () => {
-    const accounts = await web3.eth.getAccounts();
-
-    this.setState({ message: 'Waiting on transaction success..'})
-    await lottery.methods.pickWinner().send({
-      from: accounts[0]
+  renderTransferHistory() {
+    return this.state.transferHistory.map((transferEvent,index)=>{
+      return <tr
+          key={index}
+          id={index}>
+        <td>{index+1}</td>
+        <td>{transferEvent.returnValues.from}</td>
+        <td>{transferEvent.returnValues.to}</td>
+        <td>{transferEvent.returnValues.value/1000000000000000000}</td>
+      </tr>;
     });
-
-    this.setState({ message: 'A winner has been picked!'})
   }
-
 
 
   //2. render to be called with manager=''
   render() {
     return (
       <div >
-        <h2>Lottery Contract</h2>
-        <p>This contract is managed by {this.state.manager}
-          There are currently {this.state.players.length} people
-          competing to win {web3.utils.fromWei(this.state.balance,'ether')} ether!
-        </p>
         <hr />
-        <form onSubmit={this.onSubmit}>
-          <h4>Want to try you luck?</h4>
+          <h4>CND Coin Transfer History</h4>
           <div>
-            <label>Amount of ether to enter:</label>
-            <input
-                value = {this.state.value}
-                onChange={event => {this.setState({value: event.target.value} )}}
-            />
+            <label>Total Supply:</label>
+            <label>{this.state.totalSupply/1000000000000000000}</label>
           </div>
-            <button>Enter</button>
-        </form>
-
-        <hr/>
-        <h4>Ready to pick a winner?</h4>
-        <button onClick={this.onClick}>Pick a winner</button>
-        <hr/>
-        <h1>{this.state.message}</h1>
+        <div>
+          <label>Total Transfers:</label>
+          <label>{this.state.transferHistory.length}</label>
+        </div>
+        <div>
+          <label>History:</label>
+          <table id='TransferEvents'><tbody>
+          <th>No</th><th>From Account</th><th>To Account</th><th>Amount</th>
+          {this.renderTransferHistory()}
+          </tbody></table>
+        </div>
       </div>
     );
   }
